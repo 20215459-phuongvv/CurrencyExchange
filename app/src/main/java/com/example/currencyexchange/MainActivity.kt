@@ -28,6 +28,8 @@ class MainActivity : AppCompatActivity() {
         // Add more currency rates here
     )
 
+    private var isSourceAmountSelected = true
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
@@ -47,21 +49,22 @@ class MainActivity : AppCompatActivity() {
             targetCurrency.adapter = adapter
         }
 
-        sourceAmount.addTextChangedListener(object : TextWatcher {
-            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
-
-            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
-                performConversion()
+        sourceAmount.setOnFocusChangeListener { _, hasFocus ->
+            if (hasFocus) {
+                isSourceAmountSelected = true
             }
+        }
 
-            override fun afterTextChanged(s: Editable?) {}
-        })
+        targetAmount.setOnFocusChangeListener { _, hasFocus ->
+            if (hasFocus) {
+                isSourceAmountSelected = false
+            }
+        }
 
         sourceCurrency.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
             override fun onItemSelected(parent: AdapterView<*>, view: View?, position: Int, id: Long) {
                 performConversion()
             }
-
             override fun onNothingSelected(parent: AdapterView<*>) {}
         }
 
@@ -69,16 +72,31 @@ class MainActivity : AppCompatActivity() {
             override fun onItemSelected(parent: AdapterView<*>, view: View?, position: Int, id: Long) {
                 performConversion()
             }
-
             override fun onNothingSelected(parent: AdapterView<*>) {}
         }
+
+        sourceAmount.addTextChangedListener(object : TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
+                if (isSourceAmountSelected) performConversion()
+            }
+            override fun afterTextChanged(s: Editable?) {}
+        })
+
+        targetAmount.addTextChangedListener(object : TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
+                if (!isSourceAmountSelected) performConversion()
+            }
+            override fun afterTextChanged(s: Editable?) {}
+        })
     }
 
     @SuppressLint("DefaultLocale")
     private fun performConversion() {
-        val sourceValue = sourceAmount.text.toString().toDoubleOrNull()
-        val sourceCurrencyType = sourceCurrency.selectedItem.toString()
-        val targetCurrencyType = targetCurrency.selectedItem.toString()
+        val sourceValue = if (isSourceAmountSelected) sourceAmount.text.toString().toDoubleOrNull() else targetAmount.text.toString().toDoubleOrNull()
+        val sourceCurrencyType = if (isSourceAmountSelected) sourceCurrency.selectedItem.toString() else targetCurrency.selectedItem.toString()
+        val targetCurrencyType = if (isSourceAmountSelected) targetCurrency.selectedItem.toString() else sourceCurrency.selectedItem.toString()
 
         if (sourceValue != null && exchangeRates.containsKey(sourceCurrencyType) && exchangeRates.containsKey(targetCurrencyType)) {
             val conversionRate = exchangeRates[targetCurrencyType]!! / exchangeRates[sourceCurrencyType]!!
@@ -86,9 +104,14 @@ class MainActivity : AppCompatActivity() {
             val formatter = NumberFormat.getNumberInstance(Locale.US)
             formatter.maximumFractionDigits = 2
             formatter.isGroupingUsed = true
-            targetAmount.setText(formatter.format(convertedAmount))
+
+            if (isSourceAmountSelected) {
+                targetAmount.setText(formatter.format(convertedAmount))
+            } else {
+                sourceAmount.setText(formatter.format(convertedAmount))
+            }
         } else {
-            targetAmount.setText("")
+            if (isSourceAmountSelected) targetAmount.setText("") else sourceAmount.setText("")
         }
     }
 }
